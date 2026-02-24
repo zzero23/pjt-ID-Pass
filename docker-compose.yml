@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "${DB_PORT}:3306"
+    networks:
+      - idpass-net
+
+  redis:
+    image: redis:latest
+    container_name: idpass-redis
+    networks:
+      - idpass-net
+
+  back:
+    build: ./back
+    container_name: idpass-back
+    depends_on:
+      - db
+      - redis
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/${MYSQL_DATABASE}?serverTimezone=Asia/Seoul
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
+      - SPRING_DATA_REDIS_HOST=redis
+    networks:
+      - idpass-net
+
+  front:
+    build: ./front
+    container_name: idpass-front
+    networks:
+      - idpass-net
+
+  nginx:
+    build: ./nginx
+    container_name: idpass-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - SERVER_NAME=${SERVER_NAME} # nginx.conf에서 쓸 도메인 변수 [cite: 2026-02-02]
+    depends_on:
+      - back
+      - front
+    networks:
+      - idpass-net
+
+networks:
+  idpass-net:
+    driver: bridge
