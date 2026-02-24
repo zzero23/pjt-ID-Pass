@@ -27,6 +27,9 @@ repositories {
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 
+	// Swagger UI (SpringDoc)
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+
 	// 1. 엑셀 생성을 위한 Apache POI (핵심 도구)
 	implementation 'org.apache.poi:poi:5.2.3'
 	implementation 'org.apache.poi:poi-ooxml:5.2.3'
