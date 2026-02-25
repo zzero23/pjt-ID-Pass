@@ -30,6 +30,16 @@ dependencies {
 	// Swagger UI (SpringDoc)
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
 
+	// Google API Client (토큰 검증용)
+	implementation 'com.google.api-client:google-api-client:2.0.0'
+	implementation 'com.google.http-client:google-http-client-gson:1.42.3'
+
+	// Spring Data JPA (이게 있어야 @Entity를 쓸 수 있어!)
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+	// DB 드라이버 (MySQL이나 H2 등 네가 사용하는 DB)
+	runtimeOnly 'com.mysql:mysql-connector-j'
+
 	// 1. 엑셀 생성을 위한 Apache POI (핵심 도구)
 	implementation 'org.apache.poi:poi:5.2.3'
 	implementation 'org.apache.poi:poi-ooxml:5.2.3'

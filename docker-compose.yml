@@ -21,11 +21,14 @@ services:
   back:
     build: ./idpass-java
     container_name: backend
+    ports:
+      - "8080:8080"
     depends_on:
       - db
       - redis
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/${MYSQL_DATABASE}?serverTimezone=Asia/Seoul
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
       - SPRING_DATA_REDIS_HOST=redis
@@ -33,7 +36,13 @@ services:
       - idpass-net
 
   front:
-    build: ./idpass-front
+    build:
+      context: ./idpass-front
+      args:
+        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+        - VITE_API_URL=${VITE_API_URL}
+    ports:
+      - "5173:80"
     container_name: frontend
     networks:
       - idpass-net
