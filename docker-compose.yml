@@ -19,8 +19,8 @@ services:
       - idpass-net
 
   back:
-    build: ./back
-    container_name: idpass-back
+    build: ./idpass-java
+    container_name: backend
     depends_on:
       - db
       - redis
@@ -33,8 +33,8 @@ services:
       - idpass-net
 
   front:
-    build: ./front
-    container_name: idpass-front
+    build: ./idpass-front
+    container_name: frontend
     networks:
       - idpass-net
 
