@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import homeLogo from '../assets/home-logo.png';
+import characterDog from '../assets/character-dog.png';
 
 /**
  * LoginPage 컴포넌트
@@ -27,7 +29,7 @@ const LoginPage = () => {
                 // 3. 구글 표준 로그인 버튼 생성
                 window.google.accounts.id.renderButton(
                     document.getElementById("googleBtn"),
-                    { theme: "outline", size: "large", text: "signin_with" }
+                    { theme: "outline", size: "large", text: "signin_with", width: "300" }
                 );
             }
         };
@@ -70,40 +72,169 @@ const LoginPage = () => {
 
     return (
         <div style={containerStyle}>
-            {/* 왼쪽: 서비스 소개 섹션 */}
-            <div style={infoSectionStyle}>
-                <h1 style={{ color: '#00B4D8', fontSize: '3.5rem' }}>ID-Pass</h1>
-                <p style={{ fontSize: '1.25rem', lineHeight: '1.6' }}>
-                    주민등록증 사진을 업로드하면<br/>
-                    바로 시트에 정리돼요!
-                </p>
+            {/* 좌측 섹션: 로고 크기 키우고 설명 줄이기 */}
+            <div style={leftSectionStyle}>
+                <div style={logoWrapperStyle}>
+                    <img 
+                        src={homeLogo}
+                        alt="ID-Pass Logo" 
+                        style={logoImageStyle} 
+                    />
+                    <p style={descriptionStyle}>
+                        주민등록증 사진을 업로드하면<br/>
+                        바로 시트에 정리돼요!
+                    </p>
+                </div>
             </div>
 
-            {/* 오른쪽: 로그인 버튼 섹션 */}
-            <div style={loginSectionStyle}>
-                <div id="googleBtn"></div>
+            {/* 우측 섹션: 버튼 높이 90px 및 위치 조정 */}
+            <div style={rightSectionStyle}>
+                <div id="googleBtn" style={googleBtnWrapperStyle}></div>
+            </div>
+
+            {/* 캐릭터 섹션: 현재 위치(image_3052bc) 유지 */}
+            <div style={characterSectionStyle}>
+                <div style={bubbleWrapperStyle}>
+                    <div style={bubbleTextStyle}>와 인사 업무 너무 편하다!</div>
+                    <div style={bubbleTailBorderStyle}></div> {/* 테두리용 꼬리 */}
+                    <div style={bubbleTailBackgroundStyle}></div> {/* 배경색용 꼬리 */}
+                </div>
+                <img 
+                    src={characterDog}
+                    alt="Dog Character" 
+                    style={dogImageStyle} 
+                />
             </div>
         </div>
     );
 };
 
-// --- 레이아웃 스타일 정의 ---
+// --- 레이아웃 스타일 정의 (요청 사항 반영) ---
 const containerStyle = {
     display: 'flex',
+    width: '100vw',
     height: '100vh',
-    alignItems: 'center',
-    padding: '0 12%',
-    backgroundColor: '#fff'
+    backgroundColor: '#fff',
+    position: 'relative',
+    overflow: 'hidden',
+    margin: 0,
+    padding: 0,
+    backgroundColor: '#fff',
+    backgroundImage: `
+        linear-gradient(0deg, transparent 24%, rgba(234, 234, 234, .5) 25%, rgba(234, 234, 234, .5) 26%, transparent 27%, transparent 74%, rgba(234, 234, 234, .5) 75%, rgba(234, 234, 234, .5) 76%, transparent 77%, transparent),
+        linear-gradient(90deg, transparent 24%, rgba(234, 234, 234, .5) 25%, rgba(234, 234, 234, .5) 26%, transparent 27%, transparent 74%, rgba(234, 234, 234, .5) 75%, rgba(234, 234, 234, .5) 76%, transparent 77%, transparent)
+    `,
+    backgroundSize: '50px 50px'
 };
 
-const infoSectionStyle = {
-    flex: 1.2
-};
-
-const loginSectionStyle = {
-    flex: 0.8,
+const leftSectionStyle = {
+    flex: 1,
     display: 'flex',
-    justifyContent: 'center'
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingRight: '50px' // ✅ 로고와 버튼 사이 간격을 더 넓힘 (기존 80px -> 120px)
+};
+
+const logoWrapperStyle = {
+    textAlign: 'left',
+    width: '400px'
+};
+
+const logoImageStyle = {
+    width: '400px', // ✅ IDPASS 로고 크기 대폭 키움 (기존 320px)
+    marginBottom: '15px'
+};
+
+const descriptionStyle = {
+    fontSize: '1.1rem', // ✅ 글자 크기 줄임 (기존 1.4rem)
+    color: '#333',
+    lineHeight: '1.5',
+    fontWeight: 'normal',
+    margin: 0,
+    width: '400px', // 로고 너비와 맞춰서 정렬
+    paddingLeft: '30px'
+};
+
+const rightSectionStyle = {
+    flex: 1,
+    display: 'flex',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingLeft: '50px' // ✅ 로고와 버튼 사이 간격을 더 넓힘
+};
+
+const googleBtnWrapperStyle = {
+    minWidth: '350px',
+    height: '90px',      // ✅ 버튼 영역 높이 90px 설정
+    display: 'flex',
+    alignItems: 'center', // 세로 중앙 정렬
+    justifyContent: 'center', // ✅ 강아지 위치와 맞추기 위해 왼쪽 정렬
+    transform: 'scale(1.55)', 
+    transformOrigin: 'left center'
+};
+
+const characterSectionStyle = {
+    position: 'absolute',
+    bottom: '60px',
+    right: '150px', // ✅ image_3052bc의 완벽한 위치 유지
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 10
+};
+
+const bubbleWrapperStyle = {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    marginRight: '20px', // ✅ 강아지와 말풍선 사이의 간격 (10px 전 지점 조절) [cite: 2026-02-25]
+};
+
+const bubbleTextStyle = {
+    backgroundColor: '#fff',
+    border: '1.5px solid #EAEAEA',
+    padding: '12px 24px',
+    borderRadius: '12px',
+    fontSize: '1rem',
+    color: '#333',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.05)', // 본체 그림자 [cite: 2026-02-25]
+    whiteSpace: 'nowrap',
+    fontWeight: '500',
+    position: 'relative',
+    zIndex: 2 // 꼬리보다 위에 오게 설정
+};
+
+// ✅ 말풍선 꼬리 테두리 (연결 지점 완벽 제거 버전)
+const bubbleTailBorderStyle = {
+    position: 'absolute',
+    right: '-10px', 
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: 0,
+    height: 0,
+    borderTop: '10px solid transparent',
+    borderBottom: '10px solid transparent',
+    borderLeft: '10px solid #EAEAEA', // 테두리 선 [cite: 2026-02-25]
+    zIndex: 1
+};
+
+// ✅ 말풍선 꼬리 배경 (본체 테두리를 1px 덮어서 선을 지워줌)
+const bubbleTailBackgroundStyle = {
+    position: 'absolute',
+    right: '-8.5px', // 👈 본체 테두리 1.5px를 정확히 가리도록 조정 [cite: 2026-02-25]
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: 0,
+    height: 0,
+    borderTop: '8.5px solid transparent',
+    borderBottom: '8.5px solid transparent',
+    borderLeft: '8.5px solid #fff', // 본체와 같은 흰색 [cite: 2026-02-25]
+    zIndex: 3 // 가장 위에서 테두리 겹침을 지워버림
+};
+
+const dogImageStyle = {
+    width: '150px'
 };
 
 export default LoginPage;
