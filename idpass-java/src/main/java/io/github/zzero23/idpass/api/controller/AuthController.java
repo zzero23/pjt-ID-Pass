@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth") // Nginx에서 /api/를 백엔드로 넘겨주기로 했지? [cite: 2026-02-24, 2026-02-25]
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost")
 public class AuthController {
 
     private final AuthService authService;

@@ -21,6 +21,8 @@ services:
   back:
     build: ./idpass-java
     container_name: backend
+    ports:
+      - "8080:8080"
     depends_on:
       - db
       - redis
@@ -34,7 +36,13 @@ services:
       - idpass-net
 
   front:
-    build: ./idpass-front
+    build:
+      context: ./idpass-front
+      args:
+        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+        - VITE_API_URL=${VITE_API_URL}
+    ports:
+      - "5173:80"
     container_name: frontend
     networks:
       - idpass-net
