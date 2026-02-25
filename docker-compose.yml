@@ -26,6 +26,7 @@ services:
       - redis
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/${MYSQL_DATABASE}?serverTimezone=Asia/Seoul
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
       - SPRING_DATA_REDIS_HOST=redis
