@@ -90,7 +90,7 @@ const styles = {
     alignItems: 'center', 
     gap: '35px', 
     marginBottom: '3vh',
-    paddingLeft: '80px'
+    paddingLeft: '60px'
   },
   
   dog: { width: '140px', height: 'auto', transform: 'scaleX(-1)', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.05))' },
