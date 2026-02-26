@@ -29,9 +29,10 @@ export default function MainPage() {
 
   return (
     <div style={styles.page}>
+      {/* 헤더는 흰색 배경을 유지하기 위해 별도의 스타일이 적용됨 */}
       <Header />
+      
       <div style={styles.contentWrapper}>
-        {/* 🐕 강아지 섹션: 위치를 오른쪽으로 밀어내기 위해 padding 추가 [cite: 2026-02-26] */}
         <div style={styles.dogSection}>
           <img src={dogImg} alt="dog" style={styles.dog} />
           <div style={styles.bubble}>
@@ -39,7 +40,7 @@ export default function MainPage() {
             <div style={styles.bubbleTail} />
           </div>
         </div>
-
+        
         <div style={styles.mainLayout}>
           <div style={styles.leftCol}>
             <div style={styles.dropzone} onClick={() => inputRef.current.click()}
@@ -61,20 +62,52 @@ export default function MainPage() {
 }
 
 const styles = {
-  page: { background: '#fcfcfc', height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  contentWrapper: { flex: 1, padding: '2vh 10vw 4vh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' },
+  // ✅ 1. 페이지 전체에 격자 배경 적용
+  page: { 
+    height: '100vh', 
+    width: '100vw', 
+    display: 'flex', 
+    flexDirection: 'column', 
+    overflow: 'hidden',
+    backgroundColor: '#fff', // 기본 바탕색
+    backgroundImage: `
+        linear-gradient(0deg, transparent 24%, rgba(234, 234, 234, .5) 25%, rgba(234, 234, 234, .5) 26%, transparent 27%, transparent 74%, rgba(234, 234, 234, .5) 75%, rgba(234, 234, 234, .5) 76%, transparent 77%, transparent),
+        linear-gradient(90deg, transparent 24%, rgba(234, 234, 234, .5) 25%, rgba(234, 234, 234, .5) 26%, transparent 27%, transparent 74%, rgba(234, 234, 234, .5) 75%, rgba(234, 234, 234, .5) 76%, transparent 77%, transparent)
+    `,
+    backgroundSize: '50px 50px' // 격자 크기 [cite: 2026-02-26]
+  },
+
+  contentWrapper: { 
+    flex: 1, 
+    padding: '2vh 10vw 4vh', 
+    boxSizing: 'border-box', 
+    display: 'flex', 
+    flexDirection: 'column' 
+  },
   
-  // ✅ 강아지 섹션 조정 포인트 [cite: 2026-02-26]
   dogSection: { 
     display: 'flex', 
     alignItems: 'center', 
     gap: '35px', 
     marginBottom: '3vh',
-    paddingLeft: '80px' // 이 값을 조절해서 오른쪽으로 더 밀거나 당김
+    paddingLeft: '80px'
   },
   
   dog: { width: '140px', height: 'auto', transform: 'scaleX(-1)', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.05))' },
-  bubble: { position: 'relative', border: '1.5px solid #eee', padding: '12px 40px', borderRadius: '18px', background: '#fff', fontSize: '15px', fontWeight: '500', color: '#444' },
+  
+  // ✅ 말풍선 배경도 격자 위에서 잘 보이도록 흰색 유지 [cite: 2026-02-26]
+  bubble: { 
+    position: 'relative', 
+    border: '1.5px solid #eee', 
+    padding: '12px 35px', 
+    borderRadius: '18px', 
+    background: '#fff', 
+    fontSize: '15px', 
+    fontWeight: '500', 
+    color: '#444',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.05)' // 가독성을 위한 미세한 그림자
+  },
+
   bubbleTail: { position: 'absolute', left: '-12px', top: '50%', transform: 'translateY(-50%)', borderTop: '12px solid transparent', borderBottom: '12px solid transparent', borderRight: '12px solid #fff' },
   mainLayout: { flex: 1, display: 'flex', gap: '50px', alignItems: 'stretch', maxHeight: '60vh' },
   leftCol: { flex: '0 0 340px', display: 'flex' },
