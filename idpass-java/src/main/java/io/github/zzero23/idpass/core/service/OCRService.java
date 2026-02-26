@@ -54,10 +54,19 @@ public class OCRService {
         JsonNode root = objectMapper.readTree(rawJson);
         JsonNode fields = root.path("images").get(0).path("fields");
 
+        double totalScore = 0;
+        int count = 0;
         List<String> texts = new ArrayList<>();
+
         for (JsonNode field : fields) {
             String text = field.path("inferText").asText("").trim();
-            if (!text.isEmpty()) texts.add(text);
+            double score = field.path("inferConfidence").asDouble(); // 점수 추출
+
+            if (!text.isEmpty()) {
+                texts.add(text);
+                totalScore += score;
+                count++;
+            }
         }
 
         int rrnIndex = -1;
@@ -74,8 +83,11 @@ public class OCRService {
             }
         }
 
+        double avgConfidence = (count > 0) ? (totalScore / count) : 0; // 평균 계산
+
         return OCRResponseDto.builder()
                 .fileName(fileName)
+                .confidence(avgConfidence)
                 .name(extractName(texts, rrnIndex))
                 .birthDate(parseBirthDate(rawFront, rawBack)) // 메서드 호출 [cite: 2026-02-26]
                 .gender(parseGender(rawBack))               // 메서드 호출 [cite: 2026-02-26]

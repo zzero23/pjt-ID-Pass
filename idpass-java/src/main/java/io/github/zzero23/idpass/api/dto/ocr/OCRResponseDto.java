@@ -15,4 +15,5 @@ public class OCRResponseDto {
     private String address;         // 주소
     private boolean success;        // 처리 성공 여부
     private String errorMessage;    // 실패 시 오류 메시지
+    private double confidence;
 }
