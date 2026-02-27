@@ -10,18 +10,26 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-/**
- * OcrItemRepository 의 인메모리 구현체.
- * DB 연동 시 JpaOcrItemRepository implements OcrItemRepository 로 교체하면 됩니다.
- */
 @Repository
 public class InMemoryOcrItemRepository implements OcrItemRepository {
 
     private final Map<String, List<OcrItem>> store = new ConcurrentHashMap<>();
 
+    /**
+     * 세션에 아이템을 추가합니다.
+     * 같은 fileName 이 이미 존재하면 덮어쓰고, 없으면 새로 추가합니다.
+     * → 여러 장을 순차 분석할 때 이전 결과가 사라지지 않습니다.
+     */
     @Override
     public void save(String sessionId, List<OcrItem> items) {
-        store.put(sessionId, new ArrayList<>(items));
+        store.compute(sessionId, (key, existing) -> {
+            List<OcrItem> list = (existing != null) ? existing : new ArrayList<>();
+            for (OcrItem newItem : items) {
+                list.removeIf(e -> e.getFileName().equals(newItem.getFileName()));
+                list.add(newItem);
+            }
+            return list;
+        });
     }
 
     @Override
