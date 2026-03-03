@@ -12,6 +12,7 @@ ENV VITE_API_URL=$VITE_API_URL
 COPY package*.json ./
 RUN npm install
 RUN npm install axios
+RUN npm install uuid
 COPY . .
 
 # 이제 이 과정에서 실제 ID 값이 주입된 채로 빌드됨
