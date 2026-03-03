@@ -6,18 +6,23 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "UserSettings") @Getter
+@Table(name = "UserSettings")
+@Getter
 @Setter
 @NoArgsConstructor
 public class UserSetting {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long settingId;
     private Long userId;
-    private String excelPath = "C:/IDPass/Results";
-    private String sheetName = "Sheet1";
-    private boolean isMasking = true;
-    private boolean isAutoDelete = true;
+    private String excelPath;
+    private String sheetName;
+    private String watchFolder;
+    private boolean masking = true;
+    private boolean autoDelete = true;
 
-    public UserSetting(Long userId) { this.userId = userId; }
+    public UserSetting(Long userId) {
+        this.userId = userId;
+    }
 }

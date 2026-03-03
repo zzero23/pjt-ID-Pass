@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.zzero23.idpass.api.dto.ocr.OCRResponseDto;
 import io.github.zzero23.idpass.core.client.NaverOCRClient;
+import io.github.zzero23.idpass.core.repository.UserSettingRepository;
+import io.github.zzero23.idpass.domain.entity.UserSetting;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,10 +23,11 @@ public class OCRService {
 
     private final NaverOCRClient naverOCRClient;
     private final ObjectMapper objectMapper;
+    private final UserSettingRepository userSettingRepository;
 
     private static final Pattern RRN_PATTERN = Pattern.compile("(\\d{6})\\s*-\\s*(\\d{1,7})?");
     private static final Pattern KOREAN_ONLY = Pattern.compile("[가-힣]+");
-    // '특별시' 제거됨 (주소 잘림 방지) [cite: 2026-02-26]
+    // '특별시' 제거됨 (주소 잘림 방지)
     private static final Pattern ISSUER_PATTERN = Pattern.compile("(구청장|시청장|군수|읍장|면장|시장인|고양시장|서울시장)");
 
     public List<OCRResponseDto> analyzeAll(List<MultipartFile> files) {
@@ -89,15 +92,28 @@ public class OCRService {
                 .fileName(fileName)
                 .confidence(avgConfidence)
                 .name(extractName(texts, rrnIndex))
-                .birthDate(parseBirthDate(rawFront, rawBack)) // 메서드 호출 [cite: 2026-02-26]
-                .gender(parseGender(rawBack))               // 메서드 호출 [cite: 2026-02-26]
-                .residentNumber(rawFront.isEmpty() ? "인식 실패" : rawFront + "-*******")
+                .birthDate(parseBirthDate(rawFront, rawBack)) // 메서드 호출
+                .gender(parseGender(rawBack))               // 메서드 호출
+                .residentNumber(buildResidentNumber(rawFront, rawBack))
                 .address(extractAddress(texts, rrnIndex))
                 .success(true)
                 .build();
     }
 
-    // ✅ 생년월일 계산 로직 (추가됨) [cite: 2026-02-26]
+
+    /**
+     * 마스킹 설정에 따라 주민번호 뒷자리를 마스킹하거나 그대로 반환합니다.
+     */
+    private String buildResidentNumber(String front, String back) {
+        if (front.isEmpty()) return "인식 실패";
+        boolean masking = userSettingRepository.findByUserId(1L)
+                .map(UserSetting::isMasking)
+                .orElse(true); // 설정 없으면 기본 마스킹
+        String backPart = (back == null || back.isEmpty()) ? "0000000" : back;
+        return masking ? front + "-*******" : front + "-" + backPart;
+    }
+
+    // ✅ 생년월일 계산 로직 (추가됨)
     private String parseBirthDate(String front, String back) {
         if (front.length() < 6) return "—";
         try {
@@ -117,7 +133,7 @@ public class OCRService {
         }
     }
 
-    // ✅ 성별 판별 로직 (추가됨) [cite: 2026-02-26]
+    // ✅ 성별 판별 로직 (추가됨)
     private String parseGender(String back) {
         if (back.isEmpty()) return "—";
         char code = back.charAt(0);

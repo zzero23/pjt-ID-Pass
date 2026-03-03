@@ -4,6 +4,8 @@ import io.github.zzero23.idpass.api.dto.ocr.OcrUpdateRequestDto;
 import io.github.zzero23.idpass.api.dto.ocr.OCRResponseDto;
 import io.github.zzero23.idpass.domain.entity.OcrItem;
 import io.github.zzero23.idpass.core.repository.OcrItemRepository;
+import io.github.zzero23.idpass.core.repository.UserSettingRepository;
+import io.github.zzero23.idpass.domain.entity.UserSetting;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -12,6 +14,10 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.FileOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,6 +27,7 @@ import java.util.stream.Collectors;
 public class OcrManageService {
 
     private final OcrItemRepository ocrItemRepository;
+    private final UserSettingRepository userSettingRepository;
 
     // ──────────────────────────────────────────────────────────────────────────
     // 1. OCR 분석 결과를 세션에 저장 (OCRService.analyzeAll() 호출 직후 연동)
@@ -99,10 +106,18 @@ public class OcrManageService {
         List<OcrItem> exportTargets = ocrItemRepository.findExportable(sessionId);
         log.info("[{}] 엑셀 내보내기: {}건 (제외 건 필터링 완료)", sessionId, exportTargets.size());
 
+        // 설정 로드 (없으면 기본값)
+        UserSetting setting = userSettingRepository.findByUserId(1L).orElse(null);
+        String sheetName = (setting != null && setting.getSheetName() != null && !setting.getSheetName().isBlank())
+                ? setting.getSheetName() : "Sheet1";
+        String excelPath = (setting != null && setting.getExcelPath() != null && !setting.getExcelPath().isBlank())
+                ? setting.getExcelPath()
+                : System.getProperty("user.home") + "/Desktop"; // 기본값: 바탕화면
+
         try (Workbook wb = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
-            Sheet sheet = wb.createSheet("OCR 결과");
+            Sheet sheet = wb.createSheet(sheetName);
 
             // ── 헤더 ──────────────────────────────────────────
             CellStyle headerStyle = createHeaderStyle(wb);
@@ -134,7 +149,22 @@ public class OcrManageService {
             }
 
             wb.write(out);
-            return out.toByteArray();
+            byte[] bytes = out.toByteArray();
+
+            // 설정된 경로에 파일로 저장
+            try {
+                Path dir = Paths.get(excelPath);
+                Files.createDirectories(dir);
+                Path filePath = dir.resolve("ocr_result.xlsx");
+                try (FileOutputStream fos = new FileOutputStream(filePath.toFile())) {
+                    fos.write(bytes);
+                }
+                log.info("[{}] 엑셀 파일 저장 완료: {}", sessionId, filePath);
+            } catch (IOException e) {
+                log.warn("[{}] 파일 저장 실패 (브라우저 다운로드는 정상): {}", sessionId, e.getMessage());
+            }
+
+            return bytes;
         }
     }
 
