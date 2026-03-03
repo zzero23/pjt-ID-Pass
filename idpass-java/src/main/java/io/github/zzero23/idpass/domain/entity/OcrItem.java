@@ -8,8 +8,8 @@ import lombok.Setter;
 /**
  * OCR 분석 결과 + 검수 상태를 관리하는 인메모리 모델.
  *
- * isEdited  : 사용자가 하나 이상의 필드를 수정했을 때 true → 프론트 강조 표시용
- * isExcluded: 엑셀 저장 대상에서 제외된 경우 true
+ * edited   : 사용자가 하나 이상의 필드를 수정했을 때 true → 프론트 강조 표시용
+ * excluded : 엑셀 저장 대상에서 제외된 경우 true
  */
 @Getter
 @Setter
@@ -26,15 +26,16 @@ public class OcrItem {
     private String errorMessage;
     private double confidence;
 
-    // ── 검수 상태 플래그 ──────────────────────────────
+    // ── 검수 상태 플래그 ─────────────────────────────
+    // ※ 'isEdited', 'isExcluded' 로 쓰면 Lombok이 getter를 isIsEdited() 로 만들어
+    //    JSON 직렬화/역직렬화 및 setter 호출이 꼬임 → 접두사 없이 선언
     @Builder.Default
-    private boolean isEdited = false;
+    private boolean edited = false;
 
     @Builder.Default
-    private boolean isExcluded = false;
+    private boolean excluded = false;
 
     // ── 팩토리 ──────────────────────────────────────
-    /** OCRResponseDto → OcrItem 변환 */
     public static OcrItem from(OCRResponseDto dto) {
         return OcrItem.builder()
                 .fileName(dto.getFileName())

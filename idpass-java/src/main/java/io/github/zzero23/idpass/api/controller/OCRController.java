@@ -2,6 +2,7 @@ package io.github.zzero23.idpass.api.controller;
 
 import io.github.zzero23.idpass.api.dto.ocr.OCRResponseDto;
 import io.github.zzero23.idpass.core.service.OCRService;
+import io.github.zzero23.idpass.core.service.OcrManageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -18,6 +19,7 @@ import java.util.List;
 public class OCRController {
 
     private final OCRService ocrService;
+    private final OcrManageService ocrManageService;
 
     /**
      * POST /api/ocr/analyze
@@ -36,7 +38,8 @@ public class OCRController {
      */
     @PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<List<OCRResponseDto>> analyze(
-            @RequestPart("files") List<MultipartFile> files
+            @RequestPart("files") List<MultipartFile> files,
+            @RequestParam("sessionId") String sessionId
     ) {
         log.info("OCR 분석 요청: 총 {}개 파일", files.size());
 
@@ -47,6 +50,8 @@ public class OCRController {
 
         // 서비스 위임
         List<OCRResponseDto> results = ocrService.analyzeAll(files);
+
+        ocrManageService.saveSession(sessionId, results);
 
         log.info("OCR 분석 완료: {}개 처리됨", results.size());
         return ResponseEntity.ok(results);

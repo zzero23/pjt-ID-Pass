@@ -143,7 +143,7 @@ const styles = {
   dog: { width: '140px', height: 'auto', transform: 'scaleX(-1)', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.05))' },
   bubble: { position: 'relative', border: '1.5px solid #eee', padding: '12px 35px', borderRadius: '18px', background: '#fff', fontSize: '15px', fontWeight: '500', color: '#444', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' },
   bubbleTail: { position: 'absolute', left: '-12px', top: '50%', transform: 'translateY(-50%)', borderTop: '12px solid transparent', borderBottom: '12px solid transparent', borderRight: '12px solid #fff' },
-  mainLayout: { flex: 1, display: 'flex', gap: '50px', alignItems: 'stretch', maxHeight: '60vh' },
+  mainLayout: { flex: 1, display: 'flex', gap: '50px', alignItems: 'stretch', minHeight: 0, overflow: 'hidden' },
   leftCol: { flex: '0 0 340px', display: 'flex' },
   dropzone: { flex: 1, border: '2px dashed #0FF0FC', borderRadius: '24px', backgroundColor: 'rgba(15,240,252,0.1)', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' },
   dropText: { color: '#0FF0FC', fontWeight: 'bold', fontSize: '18px', textAlign: 'center', lineHeight: '1.5' },
