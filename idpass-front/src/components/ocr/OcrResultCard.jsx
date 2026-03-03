@@ -21,16 +21,22 @@ const OcrResultCard = ({ items, sessionId, onItemUpdate, onExcelSave }) => {
   // ── 1. 제외 체크박스 ──
   const handleExcludeChange = async (e) => {
     e.stopPropagation();
-    e.preventDefault();
     if (!current) return;
     const isExcluded = e.target.checked;
-    onItemUpdate({ ...current, isExcluded });
+    onItemUpdate({ fileName: current.fileName, isExcluded });
     try {
       const res = await updateItem(sessionId, { fileName: current.fileName, isExcluded });
-      if (res.status === 200) onItemUpdate({ ...current, ...res.data });
+      if (res.status === 200) {
+        onItemUpdate({ 
+          fileName: current.fileName,
+          ...res.data,
+          isExcluded: res.data.isExcluded ?? res.data.excluded ?? isExcluded,
+          isEdited: res.data.isEdited ?? res.data.edited ?? current.isEdited,
+        });
+      }
     } catch (err) {
       console.error('제외 처리 실패:', err);
-      onItemUpdate({ ...current, isExcluded: !isExcluded });
+      onItemUpdate({ fileName: current.fileName, isExcluded: !isExcluded });
     }
   };
 
@@ -43,7 +49,12 @@ const OcrResultCard = ({ items, sessionId, onItemUpdate, onExcelSave }) => {
     setEditingField(null);
     try {
       const res = await updateItem(sessionId, { fileName: current.fileName, [key]: tempValue });
-      if (res.status === 200) onItemUpdate({ ...current, ...res.data });
+      if (res.status === 200) onItemUpdate({ 
+        ...current,
+        ...res.data,
+        isExcluded: res.data.isExcluded ?? res.data.excluded ?? current.isExcluded,
+        isEdited: res.data.isEdited ?? res.data.edited ?? current.isEdited,
+      });
     } catch (err) {
       console.error('데이터 수정 실패:', err);
       onItemUpdate({ ...current });

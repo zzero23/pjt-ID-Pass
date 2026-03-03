@@ -34,8 +34,8 @@ export default function MainPage() {
             ...dto,
             _preview: previews[i],   // 기존 preview 재사용 (새 URL 생성 X)
             pending: false,
-            isExcluded: dto.isExcluded ?? false,
-            isEdited: dto.isEdited ?? false,
+            isExcluded: dto.isExcluded ?? dto.excluded ?? false,
+            isEdited: dto.isEdited ?? dto.edited ?? false,
           };
           return updated;
         });
