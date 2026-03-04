@@ -17,6 +17,7 @@ public class UserSetting {
     private Long settingId;
     private Long userId;
     private String excelPath;
+    private String excelFileName;
     private String sheetName;
     private String watchFolder;
     private boolean masking = true;

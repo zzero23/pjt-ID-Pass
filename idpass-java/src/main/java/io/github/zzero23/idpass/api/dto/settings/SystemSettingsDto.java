@@ -5,10 +5,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
-/**
- * 설정 조회·수정에 사용하는 DTO.
- * null 필드는 수정하지 않습니다 (Partial Update).
- */
 @Getter
 @Builder
 @NoArgsConstructor
@@ -16,6 +12,7 @@ import lombok.AllArgsConstructor;
 public class SystemSettingsDto {
 
     private String excelPath;
+    private String excelFileName;
     private String sheetName;
     private String watchFolder;
     private Boolean maskingEnabled;

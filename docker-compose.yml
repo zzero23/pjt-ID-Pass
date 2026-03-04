@@ -26,12 +26,16 @@ services:
     depends_on:
       - db
       - redis
+    volumes:
+      - C:/Users/SSAFY/Desktop/IDPass:/app/output
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/${MYSQL_DATABASE}?serverTimezone=Asia/Seoul
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - NAVER_OCR_SECRET_KEY=${NAVER_OCR_SECRET_KEY}
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.MySQLDialect
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - NAVER_OCR_SECRET_KEY=${NAVER_OCR_SECRET_KEY}
       - SPRING_DATA_REDIS_HOST=redis
     networks:
       - idpass-net

@@ -3,18 +3,19 @@ import { fetchSettings, saveSettings, fetchHealth } from '../api/settingsApi';
 
 const HEALTH_POLL_INTERVAL = 5000;
 
-// null/undefined → '' 변환 (input value에 null 들어가면 uncontrolled 경고)
-const normalize = (settings) => ({
-  excelPath:        settings.excelPath        ?? '',
-  sheetName:        settings.sheetName        ?? '',
-  watchFolder:      settings.watchFolder      ?? '',
-  maskingEnabled:   settings.maskingEnabled   ?? settings.masking   ?? true,
-  autoDeleteEnabled: settings.autoDeleteEnabled ?? settings.autoDelete ?? true,
+const normalize = (s) => ({
+  excelPath:         s.excelPath         ?? '',
+  excelFileName:     s.excelFileName     ?? '',
+  sheetName:         s.sheetName         ?? '',
+  watchFolder:       s.watchFolder       ?? '',
+  maskingEnabled:    s.maskingEnabled    ?? s.masking    ?? true,
+  autoDeleteEnabled: s.autoDeleteEnabled ?? s.autoDelete ?? true,
 });
 
 export function useSystemSettings() {
   const [settings, setSettings] = useState({
     excelPath: '',
+    excelFileName: '',
     sheetName: '',
     watchFolder: '',
     maskingEnabled: true,
@@ -30,14 +31,12 @@ export function useSystemSettings() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
 
-  // 최초 설정 로드
   useEffect(() => {
     fetchSettings()
       .then(res => setSettings(normalize(res.data)))
       .catch(err => console.error('설정 로드 실패:', err));
   }, []);
 
-  // Health Check 폴링
   const pollRef = useRef(null);
   useEffect(() => {
     const poll = () => {

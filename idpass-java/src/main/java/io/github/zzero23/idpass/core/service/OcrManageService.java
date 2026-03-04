@@ -12,12 +12,8 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.FileOutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.*;
+import java.nio.file.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,16 +25,7 @@ public class OcrManageService {
     private final OcrItemRepository ocrItemRepository;
     private final UserSettingRepository userSettingRepository;
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // 1. OCR 분석 결과를 세션에 저장 (OCRService.analyzeAll() 호출 직후 연동)
-    // ──────────────────────────────────────────────────────────────────────────
-
-    /**
-     * 분석된 OCRResponseDto 목록을 OcrItem 으로 변환하여 세션에 저장합니다.
-     *
-     * @param sessionId 프론트가 부여한 세션 ID (UUID 권장)
-     * @param dtos      OCRService.analyzeAll() 반환값
-     */
+    // ── 1. 세션 저장 ─────────────────────────────────────────────────────────
     public void saveSession(String sessionId, List<OCRResponseDto> dtos) {
         List<OcrItem> items = dtos.stream()
                 .map(OcrItem::from)
@@ -47,132 +34,125 @@ public class OcrManageService {
         log.info("[{}] 세션 저장 완료: {}건", sessionId, items.size());
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // 2. 단건 수정 (PATCH /api/ocr/sessions/{sessionId}/items)
-    // ──────────────────────────────────────────────────────────────────────────
-
-    /**
-     * 사용자가 인라인 수정한 내용을 반영합니다.
-     * null 필드는 변경하지 않습니다 (Partial Update).
-     *
-     * @return 수정 후 최신 OcrItem
-     * @throws IllegalArgumentException 해당 세션/파일을 찾지 못한 경우
-     */
+    // ── 2. 단건 수정 ─────────────────────────────────────────────────────────
     public OcrItem updateItem(String sessionId, OcrUpdateRequestDto req) {
         OcrItem item = ocrItemRepository.findOne(sessionId, req.getFileName())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "세션 또는 파일을 찾을 수 없습니다: " + req.getFileName()));
 
         boolean changed = false;
-
-        if (req.getName() != null)           { item.setName(req.getName());                   changed = true; }
-        if (req.getBirthDate() != null)      { item.setBirthDate(req.getBirthDate());          changed = true; }
-        if (req.getGender() != null)         { item.setGender(req.getGender());               changed = true; }
+        if (req.getName() != null)           { item.setName(req.getName());                    changed = true; }
+        if (req.getBirthDate() != null)      { item.setBirthDate(req.getBirthDate());           changed = true; }
+        if (req.getGender() != null)         { item.setGender(req.getGender());                changed = true; }
         if (req.getResidentNumber() != null) { item.setResidentNumber(req.getResidentNumber()); changed = true; }
-        if (req.getAddress() != null)        { item.setAddress(req.getAddress());              changed = true; }
+        if (req.getAddress() != null)        { item.setAddress(req.getAddress());               changed = true; }
+        if (changed) item.setEdited(true);
 
-        // 필드 수정이 하나라도 있으면 isEdited = true
-        if (changed) {
-            item.setEdited(true);
-            log.debug("[{}][{}] 데이터 수정됨 (isEdited=true)", sessionId, req.getFileName());
-        }
-
-        // 제외 플래그 처리
-        if (req.getIsExcluded() != null) {
-            item.setExcluded(req.getIsExcluded());
-            log.debug("[{}][{}] isExcluded={}", sessionId, req.getFileName(), req.getIsExcluded());
-        }
+        if (req.getIsExcluded() != null) item.setExcluded(req.getIsExcluded());
 
         return item;
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // 3. 세션 전체 조회 (GET /api/ocr/sessions/{sessionId}/items)
-    // ──────────────────────────────────────────────────────────────────────────
-
+    // ── 3. 세션 전체 조회 ────────────────────────────────────────────────────
     public List<OcrItem> getItems(String sessionId) {
         return ocrItemRepository.findAll(sessionId);
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // 4. 엑셀 내보내기 (POST /api/ocr/sessions/{sessionId}/export)
-    //    isExcluded == false 인 데이터만 시트에 기록합니다.
-    // ──────────────────────────────────────────────────────────────────────────
-
+    // ── 4. 엑셀 내보내기 ─────────────────────────────────────────────────────
     /**
-     * @return xlsx 파일의 바이트 배열 (Controller 에서 ResponseEntity<byte[]> 로 반환)
+     * 설정에 따라 파일/시트를 처리합니다.
+     *
+     * - 파일 없음              → 새 파일 + 새 시트 생성
+     * - 파일 있음, 시트 없음   → 기존 파일에 새 시트 추가
+     * - 파일 있음, 시트 있음   → 마지막 데이터 행 다음에 append
      */
-    public byte[] exportToExcel(String sessionId) throws IOException {
-        List<OcrItem> exportTargets = ocrItemRepository.findExportable(sessionId);
-        log.info("[{}] 엑셀 내보내기: {}건 (제외 건 필터링 완료)", sessionId, exportTargets.size());
+    public void exportToExcel(String sessionId) throws IOException {
+        List<OcrItem> targets = ocrItemRepository.findExportable(sessionId);
+        log.info("[{}] 엑셀 내보내기: {}건", sessionId, targets.size());
 
-        // 설정 로드 (없으면 기본값)
+        // ── 설정 로드 ──────────────────────────────────────────────────────
         UserSetting setting = userSettingRepository.findByUserId(1L).orElse(null);
-        String sheetName = (setting != null && setting.getSheetName() != null && !setting.getSheetName().isBlank())
-                ? setting.getSheetName() : "Sheet1";
-        String excelPath = (setting != null && setting.getExcelPath() != null && !setting.getExcelPath().isBlank())
+
+        String folderPath = (setting != null && setting.getExcelPath() != null && !setting.getExcelPath().isBlank())
                 ? setting.getExcelPath()
-                : System.getProperty("user.home") + "/Desktop"; // 기본값: 바탕화면
+                : "/app/output";
 
-        try (Workbook wb = new XSSFWorkbook();
-             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+        String fileName = (setting != null && setting.getExcelFileName() != null && !setting.getExcelFileName().isBlank())
+                ? setting.getExcelFileName()
+                : "ocr_result.xlsx";
 
-            Sheet sheet = wb.createSheet(sheetName);
+        if (!fileName.endsWith(".xlsx")) fileName += ".xlsx";
 
-            // ── 헤더 ──────────────────────────────────────────
-            CellStyle headerStyle = createHeaderStyle(wb);
-            String[] headers = {"파일명", "성명", "생년월일", "성별", "주민등록번호", "주소", "신뢰도", "수정여부"};
-            Row headerRow = sheet.createRow(0);
-            for (int i = 0; i < headers.length; i++) {
-                Cell cell = headerRow.createCell(i);
-                cell.setCellValue(headers[i]);
-                cell.setCellStyle(headerStyle);
+        String sheetName = (setting != null && setting.getSheetName() != null && !setting.getSheetName().isBlank())
+                ? setting.getSheetName()
+                : "Sheet1";
+
+        // ── 파일 경로 준비 ─────────────────────────────────────────────────
+        Path dir = Paths.get(folderPath);
+        Files.createDirectories(dir);
+        Path filePath = dir.resolve(fileName);
+
+        // ── 워크북 로드 or 생성 ────────────────────────────────────────────
+        Workbook wb;
+        boolean isNewFile = !Files.exists(filePath);
+
+        if (isNewFile) {
+            wb = new XSSFWorkbook();
+            log.info("새 엑셀 파일 생성: {}", filePath);
+        } else {
+            try (InputStream is = new FileInputStream(filePath.toFile())) {
+                wb = new XSSFWorkbook(is);
+                log.info("기존 엑셀 파일 로드: {}", filePath);
             }
-
-            // ── 데이터 행 ─────────────────────────────────────
-            int rowIdx = 1;
-            for (OcrItem item : exportTargets) {
-                Row row = sheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(nvl(item.getFileName()));
-                row.createCell(1).setCellValue(nvl(item.getName()));
-                row.createCell(2).setCellValue(nvl(item.getBirthDate()));
-                row.createCell(3).setCellValue(nvl(item.getGender()));
-                row.createCell(4).setCellValue(nvl(item.getResidentNumber()));
-                row.createCell(5).setCellValue(nvl(item.getAddress()));
-                row.createCell(6).setCellValue(String.format("%.2f", item.getConfidence()));
-                row.createCell(7).setCellValue(item.isEdited() ? "수정됨" : "-");
-            }
-
-            // 열 너비 자동 조정
-            for (int i = 0; i < headers.length; i++) {
-                sheet.autoSizeColumn(i);
-            }
-
-            wb.write(out);
-            byte[] bytes = out.toByteArray();
-
-            // 설정된 경로에 파일로 저장
-            try {
-                Path dir = Paths.get(excelPath);
-                Files.createDirectories(dir);
-                Path filePath = dir.resolve("ocr_result.xlsx");
-                try (FileOutputStream fos = new FileOutputStream(filePath.toFile())) {
-                    fos.write(bytes);
-                }
-                log.info("[{}] 엑셀 파일 저장 완료: {}", sessionId, filePath);
-            } catch (IOException e) {
-                log.warn("[{}] 파일 저장 실패 (브라우저 다운로드는 정상): {}", sessionId, e.getMessage());
-            }
-
-            return bytes;
         }
+
+        // ── 시트 로드 or 생성 ──────────────────────────────────────────────
+        Sheet sheet = wb.getSheet(sheetName);
+        boolean isNewSheet = (sheet == null);
+
+        if (isNewSheet) {
+            sheet = wb.createSheet(sheetName);
+            log.info("새 시트 생성: {}", sheetName);
+            // 헤더 행 작성
+            writeHeader(wb, sheet);
+        }
+
+        // ── 다음 작성 행 결정 (기존 데이터 다음) ──────────────────────────
+        int nextRow = sheet.getLastRowNum() + 1;
+        if (nextRow == 1 && sheet.getRow(0) == null) nextRow = 0; // 완전히 빈 시트
+
+        // 시트는 있지만 헤더가 없는 경우 (이상 케이스) 헤더 추가
+        if (nextRow == 0) {
+            writeHeader(wb, sheet);
+            nextRow = 1;
+        }
+
+        // ── 데이터 행 작성 ─────────────────────────────────────────────────
+        for (OcrItem item : targets) {
+            Row row = sheet.createRow(nextRow++);
+            row.createCell(0).setCellValue(nvl(item.getFileName()));
+            row.createCell(1).setCellValue(nvl(item.getName()));
+            row.createCell(2).setCellValue(nvl(item.getBirthDate()));
+            row.createCell(3).setCellValue(nvl(item.getGender()));
+            row.createCell(4).setCellValue(nvl(item.getResidentNumber()));
+            row.createCell(5).setCellValue(nvl(item.getAddress()));
+            row.createCell(6).setCellValue(String.format("%.2f", item.getConfidence()));
+            row.createCell(7).setCellValue(item.isEdited() ? "수정됨" : "-");
+        }
+
+        for (int i = 0; i < 8; i++) sheet.autoSizeColumn(i);
+
+        // ── 파일 저장 ──────────────────────────────────────────────────────
+        try (FileOutputStream fos = new FileOutputStream(filePath.toFile())) {
+            wb.write(fos);
+        }
+        wb.close();
+
+        log.info("[{}] 엑셀 저장 완료: {} / {}", sessionId, filePath, sheetName);
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // helpers
-    // ──────────────────────────────────────────────────────────────────────────
-
-    private CellStyle createHeaderStyle(Workbook wb) {
+    // ── helpers ───────────────────────────────────────────────────────────────
+    private void writeHeader(Workbook wb, Sheet sheet) {
         CellStyle style = wb.createCellStyle();
         Font font = wb.createFont();
         font.setBold(true);
@@ -180,10 +160,15 @@ public class OcrManageService {
         style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         style.setBorderBottom(BorderStyle.THIN);
-        return style;
+
+        String[] headers = {"파일명", "성명", "생년월일", "성별", "주민등록번호", "주소", "신뢰도", "수정여부"};
+        Row row = sheet.createRow(0);
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = row.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(style);
+        }
     }
 
-    private String nvl(String s) {
-        return s == null ? "" : s;
-    }
+    private String nvl(String s) { return s == null ? "" : s; }
 }
