@@ -66,6 +66,41 @@ public class NaverOCRClient {
         return response.getBody();
     }
 
+    public String callOCR(byte[] fileBytes, String originalFilename) throws Exception {
+        // 1. 요청 메타 JSON 구성
+        String messageJson = buildMessageJson(originalFilename);
+
+        // 2. MultipartBody 구성: byte[]를 ByteArrayResource로 감싸서 전달
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("message", messageJson);
+
+        // 중요: 파일 이름과 함께 바이트 데이터를 리소스로 추가
+        org.springframework.core.io.Resource resource = new org.springframework.core.io.ByteArrayResource(fileBytes) {
+            @Override
+            public String getFilename() {
+                return originalFilename;
+            }
+        };
+        body.add("file", resource);
+
+        // 3. 헤더 설정
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        headers.set("X-OCR-SECRET", secretKey);
+
+        HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
+
+        // 4. API 호출
+        ResponseEntity<String> response = restTemplate.exchange(
+                apiUrl,
+                HttpMethod.POST,
+                request,
+                String.class
+        );
+
+        return response.getBody();
+    }
+
     /**
      * Naver OCR API 요청에 필요한 message 파라미터 JSON을 생성합니다.
      */

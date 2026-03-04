@@ -6,6 +6,8 @@ import io.github.zzero23.idpass.api.dto.ocr.OCRResponseDto;
 import io.github.zzero23.idpass.core.client.NaverOCRClient;
 import io.github.zzero23.idpass.core.repository.UserSettingRepository;
 import io.github.zzero23.idpass.domain.entity.UserSetting;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,23 @@ public class OCRService {
     // '특별시' 제거됨 (주소 잘림 방지)
     private static final Pattern ISSUER_PATTERN = Pattern.compile("(구청장|시청장|군수|읍장|면장|시장인|고양시장|서울시장)");
 
+    public OCRResponseDto processFile(Path filePath) throws Exception {
+        String fileName = filePath.getFileName().toString();
+        try {
+            // 파일을 바이트 배열로 읽어서 Naver에 전달
+            byte[] fileBytes = Files.readAllBytes(filePath);
+
+            // NaverOCRClient에 byte[]를 받는 메서드가 있다면 호출
+            // 없다면 기존 callOCR을 수정하거나 MultipartFile로 래핑해야 함
+            String rawJson = naverOCRClient.callOCR(fileBytes, fileName);
+
+            return parseFromFields(fileName, rawJson); // 기존 파싱 엔진 그대로 사용!
+        } catch (Exception e) {
+            log.error("[WatchService] {} 처리 실패: {}", fileName, e.getMessage());
+            throw e;
+        }
+    }
+
     public List<OCRResponseDto> analyzeAll(List<MultipartFile> files) {
         List<OCRResponseDto> results = new ArrayList<>();
         for (MultipartFile file : files) {
@@ -38,7 +57,7 @@ public class OCRService {
         return results;
     }
 
-    private OCRResponseDto analyzeSingle(MultipartFile file) {
+    public OCRResponseDto analyzeSingle(MultipartFile file) {
         String fileName = file.getOriginalFilename();
         try {
             String rawJson = naverOCRClient.callOCR(file);

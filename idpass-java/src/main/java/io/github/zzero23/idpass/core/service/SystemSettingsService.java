@@ -15,14 +15,38 @@ public class SystemSettingsService {
 
     private static final Long DEFAULT_USER_ID = 1L;
 
+    // ✅ 도커 컴포즈에서 설정한 바탕화면 마운트 포인트
+    private static final String DOCKER_MONITOR_ROOT = "/app/monitor_root";
+    private static final String WINDOWS_DESKTOP_PATH = "C:/Users/SSAFY/Desktop";
+
     private final UserSettingRepository userSettingRepository;
     private final FolderWatchService folderWatchService;
+
+    /**
+     * 사용자가 입력한 윈도우 경로를 도커 컨테이너 내부 경로로 변환합니다.
+     */
+    private String normalizeWatchFolder(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+
+        // 1. 역슬래시(\)를 슬래시(/)로 통일
+        String path = raw.replace("\\", "/");
+
+        // 2. 바탕화면 경로가 포함되어 있다면 컨테이너 경로로 치환
+        // 예: "C:/Users/SSAFY/Desktop/MyFolder" -> "/app/monitor_root/MyFolder"
+        if (path.contains(WINDOWS_DESKTOP_PATH)) {
+            String normalized = path.replace(WINDOWS_DESKTOP_PATH, DOCKER_MONITOR_ROOT);
+            log.info("[Path mapping] Windows: {} -> Docker: {}", path, normalized);
+            return normalized;
+        }
+
+        return path;
+    }
 
     @Transactional(readOnly = true)
     public SystemSettingsDto getSettings() {
         return userSettingRepository.findByUserId(DEFAULT_USER_ID)
                 .map(this::toDto)
-                .orElseGet(() -> SystemSettingsDto.builder().build()); // 또는 defaultValue()
+                .orElseGet(() -> SystemSettingsDto.builder().build());
     }
 
     @Transactional
@@ -30,51 +54,32 @@ public class SystemSettingsService {
         UserSetting s = userSettingRepository.findByUserId(DEFAULT_USER_ID)
                 .orElseGet(() -> new UserSetting(DEFAULT_USER_ID));
 
-        boolean watchFolderChanged = false;
-        boolean watchEnabledChanged = false;
+        // 기본 설정 업데이트
+        if (req.getExcelPath() != null) s.setExcelPath(req.getExcelPath());
+        if (req.getExcelFileName() != null) s.setExcelFileName(req.getExcelFileName());
+        if (req.getSheetName() != null) s.setSheetName(req.getSheetName());
+        if (req.getMaskingEnabled() != null) s.setMasking(req.getMaskingEnabled());
+        if (req.getAutoDeleteEnabled() != null) s.setAutoDelete(req.getAutoDeleteEnabled());
 
-        if (req.getExcelPath() != null)
-            s.setExcelPath(req.getExcelPath().isBlank() ? null : req.getExcelPath());
-        if (req.getExcelFileName() != null)
-            s.setExcelFileName(req.getExcelFileName().isBlank() ? null : req.getExcelFileName());
-        if (req.getSheetName() != null)
-            s.setSheetName(req.getSheetName().isBlank() ? null : req.getSheetName());
-        if (req.getMaskingEnabled() != null)
-            s.setMasking(req.getMaskingEnabled());
-        if (req.getAutoDeleteEnabled() != null)
-            s.setAutoDelete(req.getAutoDeleteEnabled());
-
-        // ✅ 감시 폴더 경로 변경 감지
+        // ✅ 감시 폴더 경로 업데이트 (치환 로직 적용)
         if (req.getWatchFolder() != null) {
-            String newFolder = req.getWatchFolder().isBlank() ? null : req.getWatchFolder();
-            if (!String.valueOf(newFolder).equals(String.valueOf(s.getWatchFolder()))) {
-                s.setWatchFolder(newFolder);
-                watchFolderChanged = true;
-            }
+            String newFolder = req.getWatchFolder().isBlank() ? null : normalizeWatchFolder(req.getWatchFolder());
+            s.setWatchFolder(newFolder);
         }
 
-        // ✅ 감시 ON/OFF 토글 변경 감지
+        // ✅ 감시 사용 여부 업데이트
         if (req.getWatchEnabled() != null) {
-            boolean newEnabled = req.getWatchEnabled();
-            if (newEnabled != s.isWatchEnabled()) {
-                s.setWatchEnabled(newEnabled);
-                watchEnabledChanged = true;
-            }
+            s.setWatchEnabled(req.getWatchEnabled());
         }
 
         UserSetting saved = userSettingRepository.save(s);
+        log.info("설정 업데이트 완료: watchFolder={}, enabled={}", saved.getWatchFolder(), saved.isWatchEnabled());
 
-        // ✅ 핵심: watchEnabled 기준으로 감시 제어
-        if (saved.isWatchEnabled()) {
-            // ON 상태면: 토글이 바뀌었거나 폴더가 바뀌었을 때 재시작
-            if (watchEnabledChanged || watchFolderChanged) {
-                folderWatchService.restartWatch(saved.getWatchFolder());
-            }
+        // ✅ 수정된 폴링 방식의 FolderWatchService 제어
+        if (saved.isWatchEnabled() && saved.getWatchFolder() != null) {
+            folderWatchService.restartWatch(saved.getWatchFolder());
         } else {
-            // OFF 상태면: 토글이 꺼졌을 때 감시 중지
-            if (watchEnabledChanged) {
-                folderWatchService.stopWatch(); // stopWatch() 없으면 만들어야 함
-            }
+            folderWatchService.stopWatch();
         }
 
         return toDto(saved);
@@ -86,16 +91,6 @@ public class SystemSettingsService {
 
     public String getCurrentWatchFolder() {
         return folderWatchService.getCurrentFolder();
-    }
-
-    private UserSetting findOrCreate() {
-        return userSettingRepository.findByUserId(DEFAULT_USER_ID)
-                .orElseGet(() -> {
-                    UserSetting s = new UserSetting(DEFAULT_USER_ID);
-                    UserSetting saved = userSettingRepository.save(s);
-                    folderWatchService.restartWatch(saved.getWatchFolder());
-                    return saved;
-                });
     }
 
     private SystemSettingsDto toDto(UserSetting s) {
