@@ -1,9 +1,32 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import homeLogo from '../../assets/home-logo.png';
+import { useSystemSettings } from '../../hooks/useSystemSettings';
+
+function deriveStatus({ settings, health }) {
+  const enabled = !!settings.watchEnabled;
+
+  if (!enabled) {
+    return {
+      dot: 'bg-gray-400',
+      text: '탐지 안하는중',
+      folder: settings.watchFolder || health.watchFolder || '',
+    };
+  }
+
+  const running = !!health.watchServiceRunning || health.status === 'RUNNING';
+  return {
+    dot: running ? 'bg-green-500' : 'bg-red-500',
+    text: running ? '감시 중' : 'STOPPED',
+    folder: settings.watchFolder || health.watchFolder || '',
+  };
+}
+
 
 const Header = () => {
   const navigate = useNavigate();
+  const { settings, health } = useSystemSettings();
+  const status = useMemo(() => deriveStatus({ settings, health }), [settings, health]);
 
   return (
     <header style={styles.header}>
@@ -12,8 +35,8 @@ const Header = () => {
       </div>
 
       <div style={styles.statusGroup}>
-        <span style={styles.statusDot}>●</span>
-        <span style={styles.statusText}>SSAFY_14_주민등록증 폴더 감시 중</span>
+        <span style={styles.statusDot}>{status.folder ? `${status.folder} ` : ''}</span>
+        <span style={styles.statusText}>{status.text}</span>
         <button
           style={styles.settingsBtn}
           onClick={() => navigate('/settings')}

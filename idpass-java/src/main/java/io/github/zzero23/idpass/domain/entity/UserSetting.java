@@ -22,6 +22,8 @@ public class UserSetting {
     private String watchFolder;
     private boolean masking = true;
     private boolean autoDelete = true;
+    @Column(name="watch_enabled")
+    private boolean watchEnabled = true;
 
     public UserSetting(Long userId) {
         this.userId = userId;

@@ -17,4 +17,5 @@ public class SystemSettingsDto {
     private String watchFolder;
     private Boolean maskingEnabled;
     private Boolean autoDeleteEnabled;
+    private Boolean watchEnabled;
 }

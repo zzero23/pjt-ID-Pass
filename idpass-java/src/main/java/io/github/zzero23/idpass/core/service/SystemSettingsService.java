@@ -31,6 +31,7 @@ public class SystemSettingsService {
                 .orElseGet(() -> new UserSetting(DEFAULT_USER_ID));
 
         boolean watchFolderChanged = false;
+        boolean watchEnabledChanged = false;
 
         if (req.getExcelPath() != null)
             s.setExcelPath(req.getExcelPath().isBlank() ? null : req.getExcelPath());
@@ -42,6 +43,8 @@ public class SystemSettingsService {
             s.setMasking(req.getMaskingEnabled());
         if (req.getAutoDeleteEnabled() != null)
             s.setAutoDelete(req.getAutoDeleteEnabled());
+
+        // ✅ 감시 폴더 경로 변경 감지
         if (req.getWatchFolder() != null) {
             String newFolder = req.getWatchFolder().isBlank() ? null : req.getWatchFolder();
             if (!String.valueOf(newFolder).equals(String.valueOf(s.getWatchFolder()))) {
@@ -50,10 +53,28 @@ public class SystemSettingsService {
             }
         }
 
+        // ✅ 감시 ON/OFF 토글 변경 감지
+        if (req.getWatchEnabled() != null) {
+            boolean newEnabled = req.getWatchEnabled();
+            if (newEnabled != s.isWatchEnabled()) {
+                s.setWatchEnabled(newEnabled);
+                watchEnabledChanged = true;
+            }
+        }
+
         UserSetting saved = userSettingRepository.save(s);
 
-        if (watchFolderChanged) {
-            folderWatchService.restartWatch(saved.getWatchFolder());
+        // ✅ 핵심: watchEnabled 기준으로 감시 제어
+        if (saved.isWatchEnabled()) {
+            // ON 상태면: 토글이 바뀌었거나 폴더가 바뀌었을 때 재시작
+            if (watchEnabledChanged || watchFolderChanged) {
+                folderWatchService.restartWatch(saved.getWatchFolder());
+            }
+        } else {
+            // OFF 상태면: 토글이 꺼졌을 때 감시 중지
+            if (watchEnabledChanged) {
+                folderWatchService.stopWatch(); // stopWatch() 없으면 만들어야 함
+            }
         }
 
         return toDto(saved);
@@ -85,6 +106,7 @@ public class SystemSettingsService {
                 .watchFolder(s.getWatchFolder())
                 .maskingEnabled(s.isMasking())
                 .autoDeleteEnabled(s.isAutoDelete())
+                .watchEnabled(s.isWatchEnabled())
                 .build();
     }
 }
