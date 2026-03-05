@@ -27,8 +27,7 @@ services:
       - db
       - redis
     volumes:
-      - C:/Users/SSAFY/Desktop/IDPass:/app/excel_home
-      - C:/Users/SSAFY/Desktop:/app/monitor_root
+      - C:/Users:/app/local_users
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/${MYSQL_DATABASE}?serverTimezone=Asia/Seoul
       - SPRING_DATASOURCE_USERNAME=root
