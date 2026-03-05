@@ -75,7 +75,7 @@ public class OcrManageService {
 
         String folderPath = (setting != null && setting.getExcelPath() != null && !setting.getExcelPath().isBlank())
                 ? setting.getExcelPath()
-                : "/app/output";
+                : "/app/output"; // 기본값: docker-compose volume 마운트 경로
 
         String fileName = (setting != null && setting.getExcelFileName() != null && !setting.getExcelFileName().isBlank())
                 ? setting.getExcelFileName()
@@ -86,6 +86,14 @@ public class OcrManageService {
         String sheetName = (setting != null && setting.getSheetName() != null && !setting.getSheetName().isBlank())
                 ? setting.getSheetName()
                 : "Sheet1";
+
+        // ── 경로 검증 (Windows 경로를 Linux 컨테이너에서 쓰면 실패) ──────────
+        if (folderPath.contains(":\\") || folderPath.contains("C:/") || folderPath.matches("^[A-Za-z]:.*")) {
+            throw new IOException(
+                    "Windows 경로는 Docker 컨테이너에서 사용할 수 없습니다: " + folderPath +
+                            "\n컨테이너 내부 경로(예: /app/output) 또는 volume 마운트 경로를 사용해주세요."
+            );
+        }
 
         // ── 파일 경로 준비 ─────────────────────────────────────────────────
         Path dir = Paths.get(folderPath);

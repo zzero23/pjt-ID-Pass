@@ -1,5 +1,6 @@
 package io.github.zzero23.idpass.core.service;
 
+import io.github.zzero23.idpass.api.dto.ocr.OCRResponseDto;
 import io.github.zzero23.idpass.core.repository.UserSettingRepository;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,8 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
@@ -18,6 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class FolderWatchService {
 
     private final OCRService ocrService;
+    private final OcrManageService ocrManageService;
     private final UserSettingRepository userSettingRepository;
 
     private final AtomicBoolean running = new AtomicBoolean(false);
@@ -38,7 +42,6 @@ public class FolderWatchService {
         log.info("⏹️ 감시 중단");
     }
 
-    // ✅ 5초마다 폴더를 직접 스캔함 (도커 마운트 이슈 완벽 해결)
     @Scheduled(fixedDelay = 5000)
     public void scanFolder() {
         if (!running.get() || currentFolder.isEmpty()) return;
@@ -51,19 +54,27 @@ public class FolderWatchService {
 
         for (File file : files) {
             Path filePath = file.toPath();
-            if (file.isFile() && isImage(filePath)) {
-                try {
-                    log.info("🎯 새 이미지 발견: {}", file.getName());
-                    ocrService.processFile(filePath);
+            if (!file.isFile() || !isImage(filePath)) continue;
 
-                    // ✅ 처리 완료 후 파일 삭제 (또는 완료 폴더로 이동)
-                    // 삭제 안 하면 5초마다 계속 읽게 됨!
-                    Files.delete(filePath);
-                    log.info("🗑️ 처리 완료된 파일 삭제됨: {}", file.getName());
+            try {
+                log.info("🎯 새 이미지 발견: {}", file.getName());
 
-                } catch (Exception e) {
-                    log.error("❌ OCR 처리 중 오류: {}", file.getName(), e);
-                }
+                // 1. OCR 분석
+                OCRResponseDto result = ocrService.processFile(filePath);
+
+                // 2. 엑셀에 바로 저장 (세션 ID는 파일명 기반으로 생성)
+                String sessionId = "watch-" + UUID.randomUUID();
+                ocrManageService.saveSession(sessionId, List.of(result));
+                ocrManageService.exportToExcel(sessionId);
+
+                log.info("✅ OCR + 엑셀 저장 완료: {}", file.getName());
+
+                // 3. 처리 완료 후 파일 삭제
+                Files.delete(filePath);
+                log.info("🗑️ 처리 완료된 파일 삭제됨: {}", file.getName());
+
+            } catch (Exception e) {
+                log.error("❌ OCR 처리 중 오류: {}", file.getName(), e);
             }
         }
     }
@@ -73,16 +84,10 @@ public class FolderWatchService {
         return name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png");
     }
 
-    /**
-     * 현재 감시(폴링) 서비스가 활성화되어 있는지 확인
-     */
     public boolean isWatching() {
         return running.get();
     }
 
-    /**
-     * 현재 설정된 감시 폴더 경로 반환
-     */
     public String getCurrentFolder() {
         return currentFolder;
     }

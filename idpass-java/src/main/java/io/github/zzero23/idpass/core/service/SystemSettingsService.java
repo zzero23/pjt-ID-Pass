@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.annotation.PostConstruct;
 
 @Slf4j
 @Service
@@ -18,6 +19,16 @@ public class SystemSettingsService {
     private final UserSettingRepository userSettingRepository;
     private final FolderWatchService folderWatchService;
     private final PathMappingService pathMappingService;
+
+    /** 서버 시작 시 DB에 저장된 감시 폴더로 자동 시작 */
+    @PostConstruct
+    public void init() {
+        UserSetting s = findOrCreate();
+        if (s.getWatchFolder() != null && !s.getWatchFolder().isBlank()) {
+            log.info("서버 시작 - 저장된 감시 폴더로 자동 시작: {}", s.getWatchFolder());
+            folderWatchService.restartWatch(s.getWatchFolder());
+        }
+    }
 
     @Transactional(readOnly = true)
     public SystemSettingsDto getSettings() {
@@ -49,10 +60,8 @@ public class SystemSettingsService {
         if (req.getWatchFolder() != null) {
             String containerPath = req.getWatchFolder().isBlank()
                     ? null : pathMappingService.toContainerPath(req.getWatchFolder());
-            if (!String.valueOf(containerPath).equals(String.valueOf(s.getWatchFolder()))) {
-                s.setWatchFolder(containerPath);
-                watchFolderChanged = true;
-            }
+            s.setWatchFolder(containerPath);
+            watchFolderChanged = true; // 항상 재시작 (같은 값이어도 확실히 반영)
         }
 
         userSettingRepository.save(s);
